@@ -1,0 +1,20 @@
+version: '2'
+
+services:
+
+   prometheus:
+      image: quay.io/prometheus/prometheus
+      ports:
+         - 9090:9090
+      volumes:
+         - ${PWD}:/etc/prometheus/
+      user: root
+      command: --config.file=/etc/prometheus/prometheus.yml
+
+   grafana:
+      image: grafana/grafana
+      ports:
+         - 3000:3000
+      volumes:
+         - ${PWD}/grafana:/var/lib/grafana
+      user: root
