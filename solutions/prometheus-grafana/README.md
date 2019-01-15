@@ -22,20 +22,20 @@
     password: admin
 
 ## Create Data Source
-- Click 'Data Sources' button in 'Configuration' section on left pannel
-- Click '+Add data source'
-- Choose prometheus
-- Fill the name with telegraf's address, same with the target's address in prometheus.yml
-- Fill the URL section with http://${ip}:9090
-  - ip is the address which containers are running on
-  - 9090 is the default prometheus' port
-- 'Save and Test'
+    - Click 'Data Sources' button in 'Configuration' section on left pannel
+    - Click '+Add data source'
+    - Choose prometheus
+    - Fill the name with telegraf's address, same with the target's address in prometheus.yml
+    - Fill the URL section with http://${ip}:9090
+      - ip is the address which containers are running on
+      - 9090 is the default prometheus' port
+    - 'Save and Test'
 
 ## Import the dashboard
-- Click 'Manage' button in 'Dashboards' section on left pannel
-- Click '+Import'
-- Import dashboard.json
+    - Click 'Manage' button in 'Dashboards' section on left pannel
+    - Click '+Import'
+    - Import dashboard.json
 
 ## time sync
-- ntpdate  0.cn.pool.ntp.org
-- systemctl start ntpd
+    - ntpdate  0.cn.pool.ntp.org
+    - systemctl start ntpd
