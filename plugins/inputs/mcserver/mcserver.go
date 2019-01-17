@@ -1,6 +1,8 @@
 package mcserver
 
 import (
+	"time"
+
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs"
 	"github.com/shirou/gopsutil/cpu"
@@ -14,6 +16,27 @@ const (
 	COBOT = "cobot"
 	PARAMSERVER = "param-server"
 )
+
+var monitorProcesses map[string]*process.Process = nil
+
+func getMonitorProcesses() {
+	monitorProcesses = make(map[string]*process.Process)
+
+	if procs, err := process.Processes(); err == nil {
+		for _,proc := range procs {
+			n,err := proc.Name();
+			if err!=nil {
+				continue
+			}
+
+			switch n {
+			case APISERVER, MCSERVER, COBOT, PARAMSERVER:
+				monitorProcesses[n] = proc
+			default:
+			}
+		}
+	}
+}
 
 type McServer struct {
 
@@ -35,17 +58,26 @@ func (_ *McServer) Description() string {
 func GatherMonitoringProcessStat(name string, proc *process.Process, acc telegraf.Accumulator) {
 	fields := make(map[string]interface{})
 	tags := make(map[string]string)
-	fields[name] = proc.Pid
+
+	// get mapped field name
+	mapped := process_map[name]
+
+	// get process status
+	if s, err := proc.Status(); err==nil {
+		fields[mapped] = proc.Pid
+	} else {
+		fields[mapped] = 0
+	}
 
 	var cpuUsage float64
 	var cpuNum = float64(1)
-	if cu, err := proc.CPUPercent(); err==nil {
+	if cu, err := proc.Percent(time.Duration(0)); err==nil {
 		if info, err := cpu.Info(); err==nil {
 			cpuNum = float64(len(info))
 		}
 		cpuUsage = cu/cpuNum
 	}
-	fields[name + "_cpu_usage"] = cpuUsage
+	fields[mapped + "_cpu_usage"] = cpuUsage
 
 	var memUsage = float64(0)
 	var rss uint64 = 0
@@ -55,44 +87,29 @@ func GatherMonitoringProcessStat(name string, proc *process.Process, acc telegra
 			memUsage = float64(rss)/float64(vm.Total)
 		}
 	}
-	fields[name + "_mem_rss"] = rss
-	fields[name + "_mem_usage"] = memUsage
+	fields[mapped + "_mem_rss"] = rss
+	fields[mapped + "_mem_usage"] = memUsage
 
 	tags["type"] = "system"
 	acc.AddFields("elibot", fields, tags)
 }
 
+var process_map = map[string]string{
+	APISERVER: "api_server",
+	MCSERVER:  "mcserver",
+	COBOT: "cobot",
+	PARAMSERVER: "param_server",
+}
+
 func (m *McServer) Gather(acc telegraf.Accumulator) error {
-	monitorProcesses := make(map[string]*process.Process)
-	if procs, err := process.Processes(); err == nil {
-		for _,proc := range procs {
-			n,err := proc.Name();
-			if err!=nil {
-				continue
-			}
+	if monitorProcesses == nil {
+		getMonitorProcesses()
+	}
 
-			switch n {
-			case APISERVER, MCSERVER, COBOT, PARAMSERVER:
-				monitorProcesses[n] = proc
-			default:
-			}
+	for name,_ := range process_map {
+		if proc, ok := monitorProcesses[name]; ok {
+			GatherMonitoringProcessStat(name, proc, acc)
 		}
-	}
-
-	if apiServerProcess, ok := monitorProcesses[APISERVER]; ok {
-		GatherMonitoringProcessStat("api_server", apiServerProcess, acc)
-	}
-
-	if mcServerProcess, ok := monitorProcesses[MCSERVER]; ok {
-		GatherMonitoringProcessStat("mcserver", mcServerProcess, acc)
-	}
-
-	if cobotProcess, ok := monitorProcesses[COBOT]; ok {
-		GatherMonitoringProcessStat("cobot", cobotProcess, acc)
-	}
-
-	if paramServerProcess, ok := monitorProcesses[PARAMSERVER]; ok {
-		GatherMonitoringProcessStat("param_server", paramServerProcess, acc)
 	}
 
 	return nil
@@ -102,4 +119,4 @@ func init() {
 	inputs.Add("mcserver", func() telegraf.Input {
 		return &McServer{}
 	})
-} 
+}
