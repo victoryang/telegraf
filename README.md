@@ -8,4 +8,4 @@
     make
 
 ## Run
-   telegraf --config telegraf.conf
+    telegraf --config telegraf.conf
